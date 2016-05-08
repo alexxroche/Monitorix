@@ -1,0 +1,39 @@
+#!/bin/bash
+
+#Quick hack to plug it into stunnel.
+sudo apt-get install stunnel -y|| yum install stunnel -y
+
+PKI=/etc/pki
+
+HOST=$1
+if [ ! "$1" ];then
+   HOST=localhost
+fi
+
+mkdir -p $PKI/$HOST
+if [ ! -f "$PKI/$HOST/$HOST.key" ]; then
+   openssl genrsa -out $PKI/$HOST/$HOST.key 4096
+fi
+
+# should check to see if this is a renewal or not
+
+if [ ! -f "$PKI/$HOST/$HOST.crt" ] || [ "$2" == '-r' ]; then
+   openssl req -new -x509 -key $PKI/$HOST/$HOST.key -out $PKI/$HOST/$HOST.crt -days 3650
+fi
+if [ ! -f "$PKI/$HOST/$HOST.pem" ] || [ "$2" == '-r' ]; then
+   cat $PKI/$HOST/$HOST.key $PKI/$HOST/$HOST.crt >> $PKI/$HOST/$HOST.pem
+fi
+if [ "$HOST" == "localhost" ] && [ !-e /etc/stunnel/stunnel.pem ]; then
+   ln -s $PKI/$HOST/$HOST.pem /etc/stunnel/stunnel.pem
+fi
+
+echo "# example stunnel config
+[apache]
+client = no
+accept = 8081
+connect = 8080
+cert = /etc/stunnel/stunnel.pem
+# run with: 
+# sudo stunnel <stunnel.conf>
+"
+
